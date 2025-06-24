@@ -1,0 +1,107 @@
+/*
+  Complex YARA Ruleset for 10 Common Threats
+  Author: CyGuard
+  Description: Detects common malware threats such as ransomware, Cobalt Strike, Emotet, infostealers, and more.
+*/
+
+rule ransomware_extension_match
+{
+  strings:
+    $ext1 = ".locked"
+    $ext2 = ".crypt"
+    $ext3 = ".encrypted"
+    $ext4 = ".locky"
+  condition:
+    3 of ($ext*)
+}
+
+rule cobalt_strike_beacon
+{
+  meta:
+    description = "Detects Cobalt Strike beaconing"
+    threat = "Cobalt Strike"
+  strings:
+    $s1 = { 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 }
+    $s2 = "User-Agent: Mozilla/5.0 (Windows NT" nocase
+    $s3 = "MZ" fullword ascii
+  condition:
+    $s1 or ($s2 and $s3 at 0)
+}
+
+rule emotet_behavior
+{
+  strings:
+    $email_stealer = "outlook" nocase wide
+    $ps_script = "powershell -w hidden -enc" wide
+    $ip_regex = /(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/
+  condition:
+    all of them and filesize < 2MB
+}
+
+rule infostealer_common_patterns
+{
+  strings:
+    $config_dump = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+    $creds1 = "ftp_password"
+    $creds2 = "browser_password"
+    $wallet = "wallet.dat"
+  condition:
+    any of ($creds*) and $wallet and $config_dump
+}
+
+rule meterpreter_payload
+{
+  strings:
+    $shellcode = { FC E8 ?? ?? ?? ?? 60 89 E5 31 C0 64 8B 50 30 }
+  condition:
+    $shellcode
+}
+
+rule powershell_downloader
+{
+  strings:
+    $a1 = "powershell -exec bypass -enc"
+    $a2 = "IEX (New-Object Net.WebClient).DownloadString"
+  condition:
+    all of them
+}
+
+rule packed_upx
+{
+  strings:
+    $upx1 = "UPX0"
+    $upx2 = "UPX1"
+    $upx3 = "This file is packed with the UPX"
+  condition:
+    2 of ($upx*)
+}
+
+rule keylogger_artifacts
+{
+  strings:
+    $hook = "SetWindowsHookEx"
+    $log = "keylog.txt"
+    $reg = "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+  condition:
+    $hook and $log and $reg
+}
+
+rule reverse_shell_behavior
+{
+  strings:
+    $s1 = "connect"
+    $s2 = "socket"
+    $s3 = "cmd.exe"
+  condition:
+    all of them and filesize < 500KB
+}
+
+rule malicious_excel_macro
+{
+  strings:
+    $vba1 = "AutoOpen" ascii
+    $vba2 = "Shell(" ascii
+    $obf = /ChrW?\([0-9]{2,3}\)/
+  condition:
+    $vba1 and $vba2 and $obf
+}
