@@ -33,9 +33,6 @@ git clone https://github.com/username/complex-yara-threat-rules.git
 cd complex-yara-threat-rules
 
 yara -r complex_threats.yar /path/to/suspicious/files
-## Disclaimer
-This project is for educational and research purposes only.
-Do not execute any malware samples without proper containment and safeguards.
-Use in isolated VMs and sandbox environments.
+
 
 
