@@ -1,0 +1,44 @@
+rule Obfuscated_PowerShell_Base64_Dropper
+{
+    meta:
+        author = "CyGuard"
+        description = "Detects obfuscated PowerShell scripts using base64-encoded commands, typically used in phishing droppers"
+        reference = "Used in detection of phishing campaign targeting finance departments"
+        threat_type = "Phishing / Initial Access"
+        created = "2025-06-26"
+        tags = ["powershell", "base64", "dropper", "phishing", "memory", "sandbox"]
+
+    strings:
+        // PowerShell execution via encoded command (typical for obfuscation)
+        $ps_encoded = /powershell(\.exe)?\s*(-[Ee]ncode(d)?[Cc]ommand)\s+[A-Za-z0-9+/=]{100,}/ nocase
+
+        // Suspicious long base64 strings (often base64 payloads)
+        $base64_block = /[A-Za-z0-9+\/]{200,}={0,2}/
+
+        // Common keywords after decoding base64 payloads
+        $invoke_expression = "Invoke-Expression"
+        $iex_variants = /IEX|iex/i
+
+        // Base64-encoded PS syntax keyword indicators
+        $encoded_cmdlet = "JAB"  // e.g., "$" in base64 ("JAB" == "$" + variable)
+
+        // Common in phishing emails or dropped scripts
+        $financial_bait = "invoice"
+        $zip_attachment = ".zip"
+
+    condition:
+        (uint16(0) == 0x4D5A or filesize < 2MB) and
+        (
+            (
+                $ps_encoded and
+                $base64_block and
+                1 of ($invoke_expression, $iex_variants) and
+                $encoded_cmdlet
+            )
+            or
+            (
+                2 of ($base64_block, $encoded_cmdlet, $ps_encoded) and
+                any of ($financial_bait, $zip_attachment)
+            )
+        )
+}
